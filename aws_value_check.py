@@ -110,6 +110,15 @@ ADMINISTRATIVE = {
     "AWS Reserved Instance",
 }
 
+# Services that are nearly always orphaned or accumulated waste in product accounts.
+# EBS snapshots show up under "Amazon EBS" in Cost Explorer when billed separately,
+# or as part of "EC2 - Other" / "Amazon EC2" at the usage-type level.
+WASTE = {
+    "Amazon EBS",
+    "Amazon EC2 Snapshots",
+    "EBS Snapshots",
+}
+
 WARNING_THRESHOLDS = {
     "Amazon CloudWatch": 50, "CloudWatch": 50,
     "AWS Config": 30, "Config": 30,
@@ -120,6 +129,7 @@ WARNING_THRESHOLDS = {
     "Amazon Route 53": 200, "Route 53": 200,
     "AWS Certificate Manager": 100, "Certificate Manager": 100,
     "AWS Secrets Manager": 50, "Secrets Manager": 50,
+    "Amazon EBS": 20, "Amazon EC2 Snapshots": 20, "EBS Snapshots": 20,
 }
 
 REVIEW_ADVICE = {
@@ -198,6 +208,23 @@ REVIEW_ADVICE = {
         "Audit for unused secrets and use SSM Parameter Store for non-sensitive "
         "configuration to eliminate per-secret monthly charges."
     ),
+    "Amazon EBS": (
+        "EBS snapshot storage accumulates indefinitely unless a lifecycle policy is "
+        "applied. Audit for snapshots older than 90 days with no active AMI dependency, "
+        "delete orphaned volumes (state: available), and enable Data Lifecycle Manager "
+        "to enforce automated retention on all future snapshots."
+    ),
+    "Amazon EC2 Snapshots": (
+        "Snapshot costs grow silently — AWS does not expire them by default. "
+        "Run `aws ec2 describe-snapshots --owner-ids self` to list all snapshots, "
+        "identify those with no AMI or active restore dependency, and delete them. "
+        "Use Data Lifecycle Manager policies to cap retention going forward."
+    ),
+    "EBS Snapshots": (
+        "Snapshot costs grow silently — AWS does not expire them by default. "
+        "Audit with `aws ec2 describe-snapshots --owner-ids self`, delete orphaned "
+        "snapshots, and enforce retention via Data Lifecycle Manager."
+    ),
 }
 
 NEW_ACCOUNT_SPEND_THRESHOLD = 150.0
@@ -208,6 +235,8 @@ NEW_ACCOUNT_SPEND_THRESHOLD = 150.0
 # ---------------------------------------------------------------------------
 
 def classify(service_name: str) -> str:
+    if service_name in WASTE:
+        return "WASTE"
     if service_name in VALUE_GENERATING:
         return "VALUE"
     if service_name in OVERHEAD:
@@ -215,6 +244,8 @@ def classify(service_name: str) -> str:
     if service_name in ADMINISTRATIVE:
         return "ADMIN"
     sl = service_name.lower()
+    if any(k in sl for k in ("snapshot",)):
+        return "WASTE"
     if any(k in sl for k in ("ec2", "rds", "lambda", "sagemaker", "bedrock",
                               "ecs", "eks", "opensearch", "elasticache",
                               "redshift", "emr", "aurora", "dynamodb",
@@ -272,6 +303,8 @@ def bvr_colour(ratio: float) -> str:
 
 
 def urgency(service: str, cost: float, category: str) -> str:
+    if category == "WASTE" and cost >= 0.01:
+        return "URGENT"
     threshold = WARNING_THRESHOLDS.get(service)
     if threshold and cost >= threshold:
         return "URGENT"
@@ -303,6 +336,7 @@ def print_plain(costs: dict, months: int):
         "VALUE":   sum(v for s, v in costs.items() if classify(s) == "VALUE"),
         "OVERHEAD": sum(v for s, v in costs.items() if classify(s) == "OVERHEAD"),
         "ADMIN":   sum(v for s, v in costs.items() if classify(s) == "ADMIN"),
+        "WASTE":   sum(v for s, v in costs.items() if classify(s) == "WASTE"),
         "UNKNOWN": sum(v for s, v in costs.items() if classify(s) == "UNKNOWN"),
     }
     bvr = breakdown["VALUE"] / total if total > 0 else 0.0
@@ -315,6 +349,8 @@ def print_plain(costs: dict, months: int):
     print(f"  Value-generating:  ${breakdown['VALUE']:>10,.2f}  ({breakdown['VALUE']/total:.1%})")
     print(f"  Overhead:          ${breakdown['OVERHEAD']:>10,.2f}  ({breakdown['OVERHEAD']/total:.1%})")
     print(f"  Administrative:    ${breakdown['ADMIN']:>10,.2f}  ({breakdown['ADMIN']/total:.1%})")
+    if breakdown["WASTE"]:
+        print(f"  Waste:             ${breakdown['WASTE']:>10,.2f}  ({breakdown['WASTE']/total:.1%})")
     if breakdown["UNKNOWN"]:
         print(f"  Unclassified:      ${breakdown['UNKNOWN']:>10,.2f}  ({breakdown['UNKNOWN']/total:.1%})")
 
@@ -387,6 +423,7 @@ def print_rich(costs: dict, months: int, start: str, end: str):
         "VALUE":   sum(v for s, v in costs.items() if classify(s) == "VALUE"),
         "OVERHEAD": sum(v for s, v in costs.items() if classify(s) == "OVERHEAD"),
         "ADMIN":   sum(v for s, v in costs.items() if classify(s) == "ADMIN"),
+        "WASTE":   sum(v for s, v in costs.items() if classify(s) == "WASTE"),
         "UNKNOWN": sum(v for s, v in costs.items() if classify(s) == "UNKNOWN"),
     }
     bvr = breakdown["VALUE"] / total if total > 0 else 0.0
@@ -402,6 +439,10 @@ def print_rich(costs: dict, months: int, start: str, end: str):
         f"  Overhead:          [yellow]${breakdown['OVERHEAD']:>12,.2f}[/yellow]  ({breakdown['OVERHEAD']/total:.1%})",
         f"  Administrative:    [cyan]${breakdown['ADMIN']:>12,.2f}[/cyan]  ({breakdown['ADMIN']/total:.1%})",
     ]
+    if breakdown["WASTE"]:
+        summary_lines.append(
+            f"  Waste:             [red]${breakdown['WASTE']:>12,.2f}[/red]  ({breakdown['WASTE']/total:.1%})"
+        )
     if breakdown["UNKNOWN"]:
         summary_lines.append(
             f"  Unclassified:      [dim]${breakdown['UNKNOWN']:>12,.2f}[/dim]  ({breakdown['UNKNOWN']/total:.1%})"
@@ -422,7 +463,7 @@ def print_rich(costs: dict, months: int, start: str, end: str):
     table.add_column("Share", justify="right", min_width=7)
     table.add_column("Flag", justify="center", min_width=8)
 
-    cat_style = {"VALUE": "green", "OVERHEAD": "yellow", "ADMIN": "cyan", "UNKNOWN": "dim"}
+    cat_style = {"VALUE": "green", "OVERHEAD": "yellow", "ADMIN": "cyan", "WASTE": "red", "UNKNOWN": "dim"}
     urgent_services = []
 
     for service, cost in sorted(costs.items(), key=lambda x: x[1], reverse=True):
@@ -471,7 +512,7 @@ def print_new_account_rich(costs: dict, months: int):
     table.add_column("Category", min_width=10)
     table.add_column("Cost (USD)", justify="right", min_width=12)
 
-    cat_style = {"VALUE": "green", "OVERHEAD": "yellow", "ADMIN": "cyan", "UNKNOWN": "dim"}
+    cat_style = {"VALUE": "green", "OVERHEAD": "yellow", "ADMIN": "cyan", "WASTE": "red", "UNKNOWN": "dim"}
     for service, cost in sorted(costs.items(), key=lambda x: x[1], reverse=True):
         if cost < 0.01:
             continue

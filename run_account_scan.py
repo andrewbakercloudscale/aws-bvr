@@ -59,6 +59,7 @@ def render_markdown(account_id: str, account_name: str, costs: dict,
         "VALUE":    sum(v for s, v in costs.items() if classify(s) == "VALUE"),
         "OVERHEAD": sum(v for s, v in costs.items() if classify(s) == "OVERHEAD"),
         "ADMIN":    sum(v for s, v in costs.items() if classify(s) == "ADMIN"),
+        "WASTE":    sum(v for s, v in costs.items() if classify(s) == "WASTE"),
         "UNKNOWN":  sum(v for s, v in costs.items() if classify(s) == "UNKNOWN"),
     }
 
@@ -98,6 +99,8 @@ def render_markdown(account_id: str, account_name: str, costs: dict,
     lines.append(f"| Value-generating spend | ${breakdown['VALUE']:,.2f} ({breakdown['VALUE']/total:.1%}) |")
     lines.append(f"| Enablement spend | ${breakdown['OVERHEAD']:,.2f} ({breakdown['OVERHEAD']/total:.1%}) |")
     lines.append(f"| Governance spend | ${breakdown['ADMIN']:,.2f} ({breakdown['ADMIN']/total:.1%}) |")
+    if breakdown["WASTE"]:
+        lines.append(f"| **Waste** | **${breakdown['WASTE']:,.2f}** ({breakdown['WASTE']/total:.1%}) |")
     if breakdown["UNKNOWN"]:
         lines.append(f"| Unclassified | ${breakdown['UNKNOWN']:,.2f} ({breakdown['UNKNOWN']/total:.1%}) |")
     lines.append("")

@@ -89,6 +89,18 @@ class TestClassify(unittest.TestCase):
     def test_elb_is_overhead(self):
         self.assertEqual(classify("Amazon Elastic Load Balancing"), "OVERHEAD")
 
+    def test_ebs_is_waste(self):
+        self.assertEqual(classify("Amazon EBS"), "WASTE")
+
+    def test_ec2_snapshots_is_waste(self):
+        self.assertEqual(classify("Amazon EC2 Snapshots"), "WASTE")
+
+    def test_ebs_snapshots_alias_is_waste(self):
+        self.assertEqual(classify("EBS Snapshots"), "WASTE")
+
+    def test_fuzzy_snapshot_is_waste(self):
+        self.assertEqual(classify("Some EC2 Snapshot Service"), "WASTE")
+
     def test_unknown_service(self):
         self.assertEqual(classify("AWS Some Completely New Service XYZ"), "UNKNOWN")
 
@@ -128,6 +140,12 @@ class TestUrgency(unittest.TestCase):
 
     def test_low_spend_is_empty(self):
         self.assertEqual(urgency("Amazon EC2", 10, "VALUE"), "")
+
+    def test_waste_always_urgent(self):
+        self.assertEqual(urgency("Amazon EBS", 0.50, "WASTE"), "URGENT")
+
+    def test_waste_tiny_spend_still_urgent(self):
+        self.assertEqual(urgency("EBS Snapshots", 0.02, "WASTE"), "URGENT")
 
 
 class TestNewAccountDetection(unittest.TestCase):

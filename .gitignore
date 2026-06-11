@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+scan-results/
+bvr-reports/
+*.csv
+.env

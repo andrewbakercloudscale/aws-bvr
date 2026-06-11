@@ -2,7 +2,7 @@
 
 AWS Business Value Ratio — cost posture auditor for AWS product accounts.
 
-Classifies every service in your AWS bill as **Value-generating**, **Enablement**, or **Governance**, computes two diagnostic ratios, and flags services that exceed review thresholds with specific remediation guidance.
+Classifies every service in your AWS bill as **Value-generating**, **Enablement**, **Governance**, or **Waste**, computes two diagnostic ratios, and flags services that exceed review thresholds with specific remediation guidance.
 
 ## The metrics
 
@@ -154,6 +154,10 @@ Services are classified by workload purpose, not by AWS service name alone. The 
 **Enablement (OVERHEAD):** VPC, Route 53, Certificate Manager, load balancers, KMS, Secrets Manager, IAM, Directory Service, WAF — necessary plumbing that breaks delivery but not customer function when removed.
 
 **Governance (ADMIN):** CloudWatch, Config, GuardDuty, CloudTrail, Security Hub — observability, audit, and compliance controls. Removing these reduces safety and compliance posture.
+
+**Waste (WASTE):** Services or resources that accumulate cost without active use and have no architectural justification. Currently covers EBS snapshots (`Amazon EBS`, `Amazon EC2 Snapshots`, `EBS Snapshots`, and any service name containing "snapshot"). Waste items are always flagged URGENT regardless of spend amount — even a few cents indicates unmanaged accumulation. Remediation advice includes the snapshot audit command and Data Lifecycle Manager setup.
+
+Unlike the other three categories, Waste is not a matter of classification debate — it represents spend that should be eliminated, not optimised or right-sized.
 
 ## New account detection
 

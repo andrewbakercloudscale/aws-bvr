@@ -64,12 +64,13 @@ VALUE_GENERATING = {
     "Amazon DocumentDB", "Amazon Neptune", "Amazon Timestream", "Amazon QLDB",
     "Amazon Managed Blockchain", "AWS Glue", "Amazon Athena", "Amazon QuickSight",
     "AWS Lake Formation", "Amazon DataZone",
+    "Amazon Registrar",
 }
 
 OVERHEAD = {
     "Amazon VPC", "Amazon Virtual Private Cloud", "VPC",
     "AWS Transit Gateway", "Amazon CloudFront",
-    "Amazon Route 53", "Route 53", "Amazon Registrar",
+    "Amazon Route 53", "Route 53",
     "AWS Direct Connect",
     "Amazon Elastic Load Balancing", "Elastic Load Balancing",
     "AWS Global Accelerator", "AWS PrivateLink",

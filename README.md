@@ -174,3 +174,7 @@ Each audit run makes 2–5 Cost Explorer API calls at $0.01 each. Total audit co
 ---
 
 *Based on the Business Value Ratio framework described in [Your AWS Account Has a Cost Posture Problem](https://andrewbaker.ninja).*
+
+## Author
+
+Written by [Andrew Baker](https://github.com/andrewbakercloudscale), Group Chief Information Officer at [Capitec Bank](https://www.capitecbank.co.za/). Blog: [andrewbaker.ninja](https://andrewbaker.ninja/). LinkedIn: [andrew-baker-ninja](https://www.linkedin.com/in/andrew-baker-ninja/).
